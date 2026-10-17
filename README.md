@@ -8,6 +8,7 @@ See [docs/PLAN.md](docs/PLAN.md) for the screens, tech stack and milestones.
 ## Stack
 
 Expo (SDK 58) · React Native · TypeScript · Expo Router · React Native Paper · expo-sqlite + Drizzle ORM · Zustand · pdf-lib ·
+ML Kit document scanner · react-native-pdf-thumbnail · expo-image-manipulator ·
 a local Kotlin Expo module ([modules/media-store](modules/media-store)) for saving to shared storage through MediaStore.
 
 ## Requirements
@@ -23,7 +24,7 @@ npm install
 npm run android   # builds the development app and installs it on the connected device/emulator
 ```
 
-The app uses native modules, so it does not run in Expo Go.
+The app uses native modules, so it does not run in Expo Go. Scanning uses Google's ML Kit document scanner, which needs Google Play services on the phone.
 
 ## Scripts
 
@@ -43,7 +44,9 @@ src/app/         screens (Expo Router)
 src/components/  UI pieces (document row, badges, sheets)
 src/db/          SQLite schema, client and queries
 src/lib/         pure helpers (filtering, sorting, formatting), unit tested
-src/storage/     import, share, rename, delete; Google Drive sync later
+src/storage/     saving scans, import, share, rename, delete, page images; Google Drive sync later
+src/scan/        ML Kit scanner wrapper and draft files
+src/pdf/         page layout and PDF building (unit tested)
 src/store/       persisted settings
 modules/media-store/  Kotlin module: save/delete files in Documents/PDF Maker
 drizzle/         generated SQL migrations

@@ -1,5 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { PDFDocument } from 'pdf-lib';
 
@@ -7,7 +7,13 @@ import MediaStore from '@modules/media-store';
 import { deleteDocumentRow, insertDocument, updateDocument } from '@/db/documents';
 import type { Doc } from '@/db/schema';
 import { safeFileName, titleFromFileName } from '@/lib/documents';
+import type { DraftPage } from '@/lib/draftPages';
 import { newId } from '@/lib/id';
+import { createPdfBuilder } from '@/pdf/build';
+import { clearDraftFiles } from '@/scan/scanner';
+import type { PageSize } from '@/store/settings';
+
+import { deletePageFiles, finishPages, makePdfThumb, makeThumb, writePage } from './pageStore';
 
 const MIME = { pdf: 'application/pdf', jpg: 'image/jpeg' } as const;
 
@@ -34,13 +40,16 @@ export async function importPdfs(): Promise<number> {
   if (picked.canceled) return 0;
 
   for (const asset of picked.assets) {
+    const id = newId();
     const title = titleFromFileName(asset.name);
     const pageCount = await countPdfPages(asset.uri);
     const saved = await MediaStore.saveToDocumentsAsync(asset.uri, safeFileName(title, 'pdf'), MIME.pdf);
+    // A missing thumbnail should never block an import.
+    const thumbPath = await makePdfThumb(id, asset.uri).catch(() => null);
     const now = Date.now();
 
     await insertDocument({
-      id: newId(),
+      id,
       title,
       kind: 'pdf',
       pageCount,
@@ -50,11 +59,65 @@ export async function importPdfs(): Promise<number> {
       localUri: saved.uri,
       driveFileId: null,
       syncState: 'local_only',
-      thumbPath: null,
+      thumbPath,
     });
     new File(asset.uri).delete();
   }
   return picked.assets.length;
+}
+
+/**
+ * Turns the reviewed scan into a PDF in Documents/PDF Maker, keeps the page images for
+ * viewing, and adds it to the list. Returns the new document id.
+ */
+export async function saveScannedDocument(
+  pages: readonly DraftPage[],
+  { title, pageSize, onProgress }: { title: string; pageSize: PageSize; onProgress?: (done: number, total: number) => void },
+): Promise<string> {
+  if (pages.length === 0) throw new Error('Add at least one page.');
+  const id = newId();
+  const finalTitle = title.trim() || 'Scan';
+
+  try {
+    const builder = await createPdfBuilder(finalTitle, pageSize);
+    const written: { uri: string; width: number; height: number }[] = [];
+    for (const [i, page] of pages.entries()) {
+      onProgress?.(i, pages.length);
+      const { bytes, ...image } = await writePage(id, i, page);
+      await builder.addJpeg(bytes);
+      written.push(image);
+    }
+    finishPages(id, written);
+
+    const pdfFile = new File(Paths.cache, `${id}.pdf`);
+    pdfFile.create({ overwrite: true });
+    pdfFile.writeSync(await builder.save());
+    const saved = await MediaStore.saveToDocumentsAsync(pdfFile.uri, safeFileName(finalTitle, 'pdf'), MIME.pdf);
+    pdfFile.delete();
+
+    const thumbPath = await makeThumb(id, written[0].uri).catch(() => null);
+    const now = Date.now();
+    await insertDocument({
+      id,
+      title: finalTitle,
+      kind: 'pdf',
+      pageCount: written.length,
+      sizeBytes: saved.size,
+      createdAt: now,
+      updatedAt: now,
+      localUri: saved.uri,
+      driveFileId: null,
+      syncState: 'local_only',
+      thumbPath,
+    });
+  } catch (e) {
+    deletePageFiles(id);
+    throw e;
+  }
+
+  clearDraftFiles();
+  onProgress?.(pages.length, pages.length);
+  return id;
 }
 
 export async function shareDocument(doc: Doc) {
@@ -79,6 +142,7 @@ export async function deleteFromPhone(doc: Doc): Promise<boolean> {
     await updateDocument(doc.id, { localUri: null, syncState: 'drive_only' });
   } else {
     await deleteDocumentRow(doc.id);
+    deletePageFiles(doc.id);
   }
   return removed;
 }

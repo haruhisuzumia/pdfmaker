@@ -3,6 +3,7 @@ import { SplashScreen, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet, useColorScheme, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider, Text } from 'react-native-paper';
 
 import migrations from '../../drizzle/migrations';
@@ -36,23 +37,31 @@ export default function RootLayout() {
   if (!success) return null;
 
   return (
-    <PaperProvider theme={theme}>
-      <ThemeProvider value={navigationTheme(theme)}>
-        <StatusBar style={dark ? 'light' : 'dark'} />
-        <Stack>
-          <Stack.Protected guard={onboarded}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="doc/[id]" options={{ title: '' }} />
-          </Stack.Protected>
-          <Stack.Protected guard={!onboarded}>
-            <Stack.Screen name="onboarding" options={{ headerShown: false }} />
-          </Stack.Protected>
-        </Stack>
-      </ThemeProvider>
-    </PaperProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <PaperProvider theme={theme}>
+        <ThemeProvider value={navigationTheme(theme)}>
+          <StatusBar style={dark ? 'light' : 'dark'} />
+          <Stack>
+            <Stack.Protected guard={onboarded}>
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="doc/[id]/index" options={{ title: '' }} />
+              <Stack.Screen
+                name="doc/[id]/page"
+                options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000' } }}
+              />
+              <Stack.Screen name="scan/review" options={{ title: 'Review scan' }} />
+            </Stack.Protected>
+            <Stack.Protected guard={!onboarded}>
+              <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+            </Stack.Protected>
+          </Stack>
+        </ThemeProvider>
+      </PaperProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24 },
 });

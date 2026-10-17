@@ -9,7 +9,7 @@ type Props = {
   onSelect: (action: NewDocumentAction) => void;
 };
 
-// Scanning and photo import arrive with the ML Kit scanner (milestone 2).
+// ID card mode and photo import arrive in later milestones.
 const COMING_SOON = 'Coming in the next update';
 
 export function NewDocumentSheet({ visible, onDismiss, onSelect }: Props) {
@@ -26,8 +26,8 @@ export function NewDocumentSheet({ visible, onDismiss, onSelect }: Props) {
         </Text>
         <List.Item
           title="Scan document"
-          description={COMING_SOON}
-          disabled
+          description="Finds the page edges and straightens it"
+          onPress={() => onSelect('scan')}
           left={(p) => <List.Icon {...p} icon="camera-outline" />}
         />
         <List.Item

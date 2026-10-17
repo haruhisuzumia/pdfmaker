@@ -8,6 +8,8 @@ import { DocRow } from '@/components/DocRow';
 import { NewDocumentSheet, type NewDocumentAction } from '@/components/NewDocumentSheet';
 import { allDocumentsQuery } from '@/db/documents';
 import { filterDocs, sortDocs, type LocationFilter, type SortKey } from '@/lib/documents';
+import { scanPages } from '@/scan/scanner';
+import { useDraft } from '@/store/draft';
 import { importPdfs } from '@/storage/localStore';
 
 const FILTERS: { key: LocationFilter; label: string; icon: string }[] = [
@@ -38,13 +40,20 @@ export default function DocumentsScreen() {
 
   async function handleNew(action: NewDocumentAction) {
     setSheetOpen(false);
-    if (action !== 'pdf') return;
     setBusy(true);
     try {
-      const count = await importPdfs();
-      if (count > 0) setMessage(count === 1 ? 'PDF imported' : `${count} PDFs imported`);
+      if (action === 'scan') {
+        const pages = await scanPages();
+        if (pages) {
+          useDraft.getState().start(pages);
+          router.push('/scan/review');
+        }
+      } else if (action === 'pdf') {
+        const count = await importPdfs();
+        if (count > 0) setMessage(count === 1 ? 'PDF imported' : `${count} PDFs imported`);
+      }
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Import failed');
+      setMessage(e instanceof Error ? e.message : 'Something went wrong');
     } finally {
       setBusy(false);
     }

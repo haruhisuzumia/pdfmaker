@@ -24,8 +24,9 @@ Environment: Android SDK (platforms 33/35/36.1, build-tools up to 37), JDK 21 an
 | Scanner | **`@infinitered/react-native-mlkit-document-scanner`** (wraps Google's ML Kit scanner screen) | Free and on-device: edge detection, flattening, filters, cleanup, multi-page. Returns page JPEGs and a PDF. Fallback: `react-native-document-scanner-plugin` |
 | Text recognition (OCR) | ML Kit text recognition v2 through a React Native wrapper (`@react-native-ml-kit/text-recognition`; check Expo 58 support at setup) | On-device; Latin and **Devanagari** (Hindi, Marathi) scripts |
 | PDF editing | **`pdf-lib`** (pure JavaScript) | Merge, split, extract pages, place a signature, build the ID-card page, rebuild compressed PDFs |
-| PDF viewing | **`react-native-pdf`** (+ `react-native-blob-util`) | Native page viewer with zoom |
-| PDF → images | **`react-native-pdf-thumbnail`** | Thumbnails, plus rasterizing imported PDFs for compression |
+| PDF viewing | Page images + a pinch-zoom view (gesture-handler + reanimated) | Every document keeps its page images (scans directly, imported PDFs rendered once), so no PDF view library is needed |
+| PDF → images | **`react-native-pdf-thumbnail`** | Thumbnails, rendering imported PDFs' pages for the viewer, and later for compression |
+| Page reordering | **`react-native-reorderable-list`** | Drag to reorder pages on the Review screen |
 | Image processing | **`expo-image-manipulator`** | Resize, crop, rotate and JPEG quality, for compress-to-size and passport photos |
 | Files | **`expo-file-system`** (new `File`/`Directory` API) + **a small local Expo module in Kotlin, `modules/media-store`** | Saves PDFs into the shared **`Documents/PDF Maker`** folder through Android's MediaStore, with no storage permission, and files survive uninstall. The Kotlin module is also a good résumé item |
 | Database | **`expo-sqlite` + Drizzle ORM** (live queries) | The local index behind the unified document list |
