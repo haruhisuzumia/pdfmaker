@@ -1,56 +1,50 @@
-# Welcome to your Expo app 👋
+# PDF Maker
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A free, private document scanner and PDF toolkit for Android. No ads, no watermark, no account required.
+Documents are saved to the phone's `Documents/PDF Maker` folder, and optionally to the user's own Google Drive.
 
-## Get started
+See [docs/PLAN.md](docs/PLAN.md) for the screens, tech stack and milestones.
 
-1. Install dependencies
+## Stack
 
-   ```bash
-   npm install
-   ```
+Expo (SDK 58) · React Native · TypeScript · Expo Router · React Native Paper · expo-sqlite + Drizzle ORM · Zustand · pdf-lib ·
+a local Kotlin Expo module ([modules/media-store](modules/media-store)) for saving to shared storage through MediaStore.
 
-2. Start the app
+## Requirements
 
-   ```bash
-   npx expo start
-   ```
+- Node 22+, JDK 21, Android SDK (API 36)
+- An Android phone with USB debugging, or an emulator with a **Google Play** system image (the ML Kit scanner needs Play services)
+- Android 10 (API 29) or newer
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run
 
 ```bash
-npm run reset-project
+npm install
+npm run android   # builds the development app and installs it on the connected device/emulator
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+The app uses native modules, so it does not run in Expo Go.
 
-### Other setup steps
+## Scripts
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Command | What it does |
+|---|---|
+| `npm run android` | Build and run the dev app on Android |
+| `npm start` | Start the Metro dev server for an installed dev build |
+| `npm test` | Unit tests (Jest) |
+| `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint |
+| `npm run db:generate` | Generate a Drizzle migration after editing `src/db/schema.ts` |
 
-## Learn more
+## Project layout
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```
+src/app/         screens (Expo Router)
+src/components/  UI pieces (document row, badges, sheets)
+src/db/          SQLite schema, client and queries
+src/lib/         pure helpers (filtering, sorting, formatting), unit tested
+src/storage/     import, share, rename, delete; Google Drive sync later
+src/store/       persisted settings
+modules/media-store/  Kotlin module: save/delete files in Documents/PDF Maker
+drizzle/         generated SQL migrations
+```
