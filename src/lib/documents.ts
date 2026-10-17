@@ -79,9 +79,9 @@ export function formatDocDate(timestamp: number, now: number = Date.now()): stri
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** Default title for a new scan, e.g. "Scan 17 Oct 2026 10-32" (no ":" so it is a valid file name). */
-export function defaultScanTitle(at: Date = new Date()): string {
-  return `Scan ${at.getDate()} ${MONTHS[at.getMonth()]} ${at.getFullYear()} ${pad(at.getHours())}-${pad(at.getMinutes())}`;
+/** Default title for a new document, e.g. "Scan 17 Oct 2026 10-32" (no ":" so it is a valid file name). */
+export function defaultScanTitle(at: Date = new Date(), prefix = 'Scan'): string {
+  return `${prefix} ${at.getDate()} ${MONTHS[at.getMonth()]} ${at.getFullYear()} ${pad(at.getHours())}-${pad(at.getMinutes())}`;
 }
 
 /** Strips characters Android file names can't contain and trims the length. */

@@ -2,7 +2,12 @@ import { describe, expect, it } from '@jest/globals';
 
 import { movePage, removePage, rotatePage, type DraftPage } from './draftPages';
 
-const pages: DraftPage[] = ['a', 'b', 'c'].map((id) => ({ id, uri: `file:///${id}.jpg`, rotation: 0 }));
+const pages: DraftPage[] = ['a', 'b', 'c'].map((id, index) => ({
+  id,
+  uri: `file:///${id}.jpg`,
+  rotation: 0,
+  source: { kind: 'pdf', index },
+}));
 const ids = (list: DraftPage[]) => list.map((p) => p.id);
 
 describe('draftPages', () => {
@@ -27,5 +32,13 @@ describe('draftPages', () => {
 
   it('removes a page', () => {
     expect(ids(removePage(pages, 'b'))).toEqual(['a', 'c']);
+  });
+
+  it('keeps each page source through edits', () => {
+    const edited = removePage(rotatePage(movePage(pages, 2, 0), 'a'), 'b');
+    expect(edited.map((p) => p.source)).toEqual([
+      { kind: 'pdf', index: 2 },
+      { kind: 'pdf', index: 0 },
+    ]);
   });
 });

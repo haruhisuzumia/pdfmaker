@@ -9,12 +9,13 @@ import { docSubtitle } from '@/components/DocRow';
 import { LocationBadge } from '@/components/LocationBadge';
 import { documentByIdQuery } from '@/db/documents';
 import { badgeFor, isOnPhone } from '@/lib/documents';
-import { deleteFromPhone, renameDocument, shareDocument } from '@/storage/localStore';
+import type { DraftPage } from '@/lib/draftPages';
+import { useDraft } from '@/store/draft';
+import { deleteFromPhone, exportPagesAsImages, renameDocument, shareDocument } from '@/storage/localStore';
 import { ensurePages, type PageImage } from '@/storage/pageStore';
 
-// Tools that act on a document; each arrives in a later milestone.
+// Tools that act on a document and arrive in a later milestone.
 const COMING_SOON = [
-  { label: 'Edit pages', icon: 'file-document-edit-outline' },
   { label: 'Compress', icon: 'arrow-collapse-vertical' },
   { label: 'Sign', icon: 'draw' },
   { label: 'Extract text', icon: 'text-recognition' },
@@ -33,8 +34,11 @@ export default function DocumentScreen() {
   const [pages, setPages] = useState<PageImage[] | null>(null);
   const [pagesError, setPagesError] = useState<string | null>(null);
 
+  const [exporting, setExporting] = useState(false);
+
   const docId = doc?.id;
   const localUri = doc?.localUri;
+  const updatedAt = doc?.updatedAt;
   useEffect(() => {
     if (!doc) return;
     let active = true;
@@ -45,9 +49,9 @@ export default function DocumentScreen() {
     return () => {
       active = false;
     };
-    // Re-render pages only when the file itself changes, not on every row update.
+    // Reload pages when the file changes (edit, replace), not on every row update such as a rename.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docId, localUri]);
+  }, [docId, localUri, updatedAt]);
 
   if (!doc) return null;
 
@@ -56,6 +60,32 @@ export default function DocumentScreen() {
       await action();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Something went wrong');
+    }
+  }
+
+  function editPages() {
+    if (!pages || !doc) return;
+    const draft: DraftPage[] = pages.map((p, index) => ({
+      id: `${doc.id}-${index}`,
+      uri: p.uri,
+      rotation: 0,
+      source: { kind: 'pdf', index },
+    }));
+    useDraft.getState().startEdit(doc.id, draft);
+    router.push('/scan/review');
+  }
+
+  async function saveAsImages() {
+    if (!doc) return;
+    setExporting(true);
+    setMessage('Saving pages to your Gallery…');
+    try {
+      const count = await exportPagesAsImages(doc);
+      setMessage(`${count} ${count === 1 ? 'image' : 'images'} saved to Pictures/PDF Maker`);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Could not save the images');
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -85,6 +115,19 @@ export default function DocumentScreen() {
               <Button mode="contained" icon="share-variant" disabled={!isOnPhone(doc)} onPress={() => run(() => shareDocument(doc))}>
                 Share
               </Button>
+              <Chip icon="file-document-edit-outline" disabled={!pages} onPress={editPages} compact>
+                Edit pages
+              </Chip>
+              <Chip
+                icon="file-export-outline"
+                disabled={!pages || !isOnPhone(doc)}
+                onPress={() => router.push({ pathname: '/doc/[id]/extract', params: { id: doc.id } })}
+                compact>
+                Extract pages
+              </Chip>
+              <Chip icon="image-multiple-outline" disabled={!isOnPhone(doc) || exporting} onPress={saveAsImages} compact>
+                Save as images
+              </Chip>
               {COMING_SOON.map((tool) => (
                 <Chip key={tool.label} icon={tool.icon} disabled compact>
                   {tool.label}

@@ -1,11 +1,15 @@
 export type Rotation = 0 | 90 | 180 | 270;
 
+export type PageSource = { kind: 'image' } | { kind: 'pdf'; index: number };
+
 export type DraftPage = {
   id: string;
-  /** file:// URI of the scanner's JPEG in the draft folder. */
+  /** file:// URI of the preview: the scanned/picked image, or the cached render of an existing page. */
   uri: string;
   /** Clockwise rotation applied when the document is saved. */
   rotation: Rotation;
+  /** A new image, or page `index` of the document being edited. */
+  source: PageSource;
 };
 
 export function movePage(pages: readonly DraftPage[], from: number, to: number): DraftPage[] {

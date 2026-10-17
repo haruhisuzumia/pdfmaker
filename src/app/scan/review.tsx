@@ -1,18 +1,20 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Image } from 'expo-image';
-import { router, usePreventRemove } from 'expo-router';
+import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { router, Stack, usePreventRemove } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Button, Dialog, IconButton, Portal, SegmentedButtons, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
+import { Button, Dialog, IconButton, Menu, Portal, SegmentedButtons, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
 import ReorderableList, { useReorderableDrag, type ReorderableListReorderEvent } from 'react-native-reorderable-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { documentByIdQuery } from '@/db/documents';
 import { defaultScanTitle } from '@/lib/documents';
 import type { DraftPage } from '@/lib/draftPages';
-import { clearDraftFiles, scanPages } from '@/scan/scanner';
+import { clearDraftFiles, pickImages, scanPages } from '@/scan/scanner';
 import { useDraft } from '@/store/draft';
 import { useSettings, type PageSize } from '@/store/settings';
-import { saveScannedDocument } from '@/storage/localStore';
+import { saveEditedDocument, saveScannedDocument } from '@/storage/localStore';
 
 function PageRow({ page, index }: { page: DraftPage; index: number }) {
   const theme = useTheme();
@@ -41,8 +43,12 @@ export default function ReviewScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const pages = useDraft((s) => s.pages);
+  const target = useDraft((s) => s.target);
   const { append, move, clear } = useDraft.getState();
   const defaultPageSize = useSettings((s) => s.pageSize);
+  const editingId = target.mode === 'edit' ? target.docId : '';
+  const { data: editing } = useLiveQuery(documentByIdQuery(editingId), [editingId]);
+  const editDoc = target.mode === 'edit' ? editing[0] : undefined;
 
   const [title, setTitle] = useState(() => defaultScanTitle());
   const [pageSize, setPageSize] = useState<PageSize>(defaultPageSize);
@@ -50,6 +56,7 @@ export default function ReviewScreen() {
   const [savedId, setSavedId] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState<(() => void) | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   const saving = progress != null;
 
@@ -60,27 +67,30 @@ export default function ReviewScreen() {
 
   useEffect(() => {
     if (!savedId) return;
-    router.replace({ pathname: '/doc/[id]', params: { id: savedId } });
+    // An edit saved in place returns to the viewer; anything else opens the new document.
+    if (savedId === editingId) router.back();
+    else router.replace({ pathname: '/doc/[id]', params: { id: savedId } });
     clear();
-  }, [savedId, clear]);
+  }, [savedId, editingId, clear]);
 
-  async function addPages() {
+  async function addPages(from: 'scan' | 'photos') {
+    setAddMenuOpen(false);
     try {
-      const more = await scanPages();
+      const more = from === 'scan' ? await scanPages() : await pickImages();
       if (more) append(more);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : 'Could not open the scanner');
+      setMessage(e instanceof Error ? e.message : 'Could not add pages');
     }
   }
 
   async function save() {
     setProgress('Preparing…');
+    const onProgress = (done: number, total: number) =>
+      setProgress(done < total ? `Saving page ${done + 1} of ${total}…` : 'Finishing…');
     try {
-      const id = await saveScannedDocument(pages, {
-        title,
-        pageSize,
-        onProgress: (done, total) => setProgress(done < total ? `Saving page ${done + 1} of ${total}…` : 'Finishing…'),
-      });
+      const id = editDoc
+        ? await saveEditedDocument(editDoc, pages, { pageSize: defaultPageSize, onProgress })
+        : await saveScannedDocument(pages, { title, pageSize, onProgress });
       setSavedId(id);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Could not save the document');
@@ -96,7 +106,16 @@ export default function ReviewScreen() {
     leave?.();
   }
 
-  const header = (
+  const header = editDoc ? (
+    <View style={styles.header}>
+      <Text variant="titleMedium" numberOfLines={1}>
+        {editDoc.title}
+      </Text>
+      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+        Long-press a page or use the handle to change the order. Changes replace the file in Documents/PDF Maker.
+      </Text>
+    </View>
+  ) : (
     <View style={styles.header}>
       <TextInput mode="outlined" label="Name" value={title} onChangeText={setTitle} disabled={saving} />
       <View style={styles.field}>
@@ -125,11 +144,15 @@ export default function ReviewScreen() {
 
   return (
     <View style={styles.screen}>
+      {editDoc && <Stack.Screen options={{ title: 'Edit pages' }} />}
       {pages.length === 0 ? (
         <View style={styles.empty}>
           <Text variant="titleMedium">No pages</Text>
-          <Button mode="contained" icon="camera-outline" onPress={addPages}>
+          <Button mode="contained" icon="camera-outline" onPress={() => addPages('scan')}>
             Scan pages
+          </Button>
+          <Button mode="outlined" icon="image-multiple-outline" onPress={() => addPages('photos')}>
+            Choose photos
           </Button>
         </View>
       ) : (
@@ -141,9 +164,17 @@ export default function ReviewScreen() {
           dragEnabled={!saving}
           ListHeaderComponent={header}
           ListFooterComponent={
-            <Button icon="plus" mode="outlined" style={styles.addButton} onPress={addPages} disabled={saving}>
-              Add pages
-            </Button>
+            <Menu
+              visible={addMenuOpen}
+              onDismiss={() => setAddMenuOpen(false)}
+              anchor={
+                <Button icon="plus" mode="outlined" style={styles.addButton} onPress={() => setAddMenuOpen(true)} disabled={saving}>
+                  Add pages
+                </Button>
+              }>
+              <Menu.Item leadingIcon="camera-outline" title="Scan" onPress={() => addPages('scan')} />
+              <Menu.Item leadingIcon="image-multiple-outline" title="From photos" onPress={() => addPages('photos')} />
+            </Menu>
           }
           contentContainerStyle={styles.listContent}
         />
@@ -155,16 +186,22 @@ export default function ReviewScreen() {
             {progress}
           </Text>
         )}
-        <Button mode="contained" icon="file-pdf-box" onPress={save} loading={saving} disabled={saving || pages.length === 0} contentStyle={styles.saveContent}>
-          Save as PDF · {pages.length} {pages.length === 1 ? 'page' : 'pages'}
+        <Button
+          mode="contained"
+          icon={editDoc ? 'content-save-outline' : 'file-pdf-box'}
+          onPress={save}
+          loading={saving}
+          disabled={saving || pages.length === 0 || (target.mode === 'edit' && !editDoc)}
+          contentStyle={styles.saveContent}>
+          {editDoc ? 'Save changes' : 'Save as PDF'} · {pages.length} {pages.length === 1 ? 'page' : 'pages'}
         </Button>
       </View>
 
       <Portal>
         <Dialog visible={confirmLeave != null} onDismiss={() => setConfirmLeave(null)}>
-          <Dialog.Title>Discard this scan?</Dialog.Title>
+          <Dialog.Title>{editDoc ? 'Discard changes?' : 'Discard this scan?'}</Dialog.Title>
           <Dialog.Content>
-            <Text variant="bodyMedium">The scanned pages haven’t been saved.</Text>
+            <Text variant="bodyMedium">{editDoc ? 'The document stays as it was.' : 'The scanned pages haven’t been saved.'}</Text>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={() => setConfirmLeave(null)}>Keep editing</Button>

@@ -43,16 +43,20 @@ export function listPages(docId: string): PageImage[] | null {
   return manifest.pages.map((p) => ({ uri: new File(dir, p.file).uri, width: p.width, height: p.height }));
 }
 
+/** Rotates and downsizes an image to a page-sized JPEG in the cache. */
+export async function normalizeImage(source: { uri: string; rotation: Rotation }) {
+  const context = ImageManipulator.manipulate(source.uri, { maxWidth: MAX_PAGE_PX, maxHeight: MAX_PAGE_PX });
+  if (source.rotation) context.rotate(source.rotation);
+  const image = await context.renderAsync();
+  return image.saveAsync({ format: SaveFormat.JPEG, compress: PAGE_QUALITY });
+}
+
 /**
  * Rotates and downsizes one scanned page, writes it as the document's page `index`,
  * and returns it with its JPEG bytes for the PDF builder.
  */
 export async function writePage(docId: string, index: number, source: { uri: string; rotation: Rotation }) {
-  const context = ImageManipulator.manipulate(source.uri, { maxWidth: MAX_PAGE_PX, maxHeight: MAX_PAGE_PX });
-  if (source.rotation) context.rotate(source.rotation);
-  const image = await context.renderAsync();
-  const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: PAGE_QUALITY });
-
+  const saved = await normalizeImage(source);
   const dir = pagesDir(docId);
   dir.create({ intermediates: true, idempotent: true });
   const target = new File(dir, pageFileName(index));
@@ -65,16 +69,27 @@ export function finishPages(docId: string, pages: { width: number; height: numbe
   writeManifest(docId, { pages: pages.map((p, i) => ({ file: pageFileName(i), width: p.width, height: p.height })) });
 }
 
-/** Small JPEG for the document list. Returns its file:// URI. */
+function oldThumbs(docId: string): File[] {
+  const root = thumbsRoot();
+  if (!root.exists) return [];
+  return root.list().filter((f): f is File => f instanceof File && f.name.startsWith(`${docId}-`));
+}
+
+/**
+ * Small JPEG for the document list. Returns its file:// URI. Each version gets a new name
+ * so image caches never show an outdated thumbnail after an edit.
+ */
 export async function makeThumb(docId: string, sourceUri: string): Promise<string> {
   const image = await ImageManipulator.manipulate(sourceUri, { maxWidth: THUMB_WIDTH * 2 })
     .resize({ width: THUMB_WIDTH })
     .renderAsync();
   const saved = await image.saveAsync({ format: SaveFormat.JPEG, compress: 0.7 });
+  const previous = oldThumbs(docId);
   const root = thumbsRoot();
   root.create({ intermediates: true, idempotent: true });
-  const target = new File(root, `${docId}.jpg`);
+  const target = new File(root, `${docId}-${Date.now()}.jpg`);
   await new File(saved.uri).move(target, { overwrite: true });
+  previous.forEach((f) => f.delete());
   return target.uri;
 }
 
@@ -134,9 +149,16 @@ export async function ensurePages(doc: Doc): Promise<PageImage[]> {
   return listPages(doc.id) ?? [];
 }
 
-export function deletePageFiles(docId: string) {
+/** Drops the rendered pages so they are re-rendered from the (changed) PDF next time. */
+export function clearPageCache(docId: string) {
   const dir = pagesDir(docId);
   if (dir.exists) dir.delete();
-  const thumb = new File(thumbsRoot(), `${docId}.jpg`);
-  if (thumb.exists) thumb.delete();
+}
+
+export function deletePageFiles(docId: string) {
+  clearPageCache(docId);
+  oldThumbs(docId).forEach((f) => f.delete());
+  // Thumbnails from before versioned names.
+  const legacy = new File(thumbsRoot(), `${docId}.jpg`);
+  if (legacy.exists) legacy.delete();
 }

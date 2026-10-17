@@ -49,7 +49,10 @@ export default function RootLayout() {
                 name="doc/[id]/page"
                 options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000' } }}
               />
+              <Stack.Screen name="doc/[id]/extract" options={{ title: 'Extract pages' }} />
               <Stack.Screen name="scan/review" options={{ title: 'Review scan' }} />
+              <Stack.Screen name="tools/merge" options={{ title: 'Merge PDFs' }} />
+              <Stack.Screen name="tools/choose" options={{ title: 'Choose a document' }} />
             </Stack.Protected>
             <Stack.Protected guard={!onboarded}>
               <Stack.Screen name="onboarding" options={{ headerShown: false }} />

@@ -9,7 +9,7 @@ type Props = {
   onSelect: (action: NewDocumentAction) => void;
 };
 
-// ID card mode and photo import arrive in later milestones.
+// ID card mode arrives with the photo tools (milestone 4).
 const COMING_SOON = 'Coming in the next update';
 
 export function NewDocumentSheet({ visible, onDismiss, onSelect }: Props) {
@@ -38,8 +38,8 @@ export function NewDocumentSheet({ visible, onDismiss, onSelect }: Props) {
         />
         <List.Item
           title="Import photos"
-          description={COMING_SOON}
-          disabled
+          description="Turn photos from your gallery into a PDF"
+          onPress={() => onSelect('photos')}
           left={(p) => <List.Icon {...p} icon="image-multiple-outline" />}
         />
         <List.Item

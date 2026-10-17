@@ -8,7 +8,7 @@ import { DocRow } from '@/components/DocRow';
 import { NewDocumentSheet, type NewDocumentAction } from '@/components/NewDocumentSheet';
 import { allDocumentsQuery } from '@/db/documents';
 import { filterDocs, sortDocs, type LocationFilter, type SortKey } from '@/lib/documents';
-import { scanPages } from '@/scan/scanner';
+import { pickImages, scanPages } from '@/scan/scanner';
 import { useDraft } from '@/store/draft';
 import { importPdfs } from '@/storage/localStore';
 
@@ -42,10 +42,10 @@ export default function DocumentsScreen() {
     setSheetOpen(false);
     setBusy(true);
     try {
-      if (action === 'scan') {
-        const pages = await scanPages();
+      if (action === 'scan' || action === 'photos') {
+        const pages = action === 'scan' ? await scanPages() : await pickImages();
         if (pages) {
-          useDraft.getState().start(pages);
+          useDraft.getState().startNew(pages);
           router.push('/scan/review');
         }
       } else if (action === 'pdf') {

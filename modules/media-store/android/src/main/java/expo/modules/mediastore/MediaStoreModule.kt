@@ -28,6 +28,9 @@ class SaveFailedException(reason: String) :
 class ReadFailedException(uri: String) :
   CodedException("ERR_MEDIA_STORE_READ", "Could not read $uri", null)
 
+class NotOwnedException(uri: String) :
+  CodedException("ERR_MEDIA_STORE_NOT_OWNED", "The app can no longer change $uri", null)
+
 class MediaStoreModule : Module() {
   private val context: Context
     get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
@@ -38,6 +41,22 @@ class MediaStoreModule : Module() {
     // Copies a file:// or content:// source into Documents/<folder> and returns the new entry.
     AsyncFunction("saveToDocumentsAsync") { sourceUri: String, displayName: String, mimeType: String, folder: String? ->
       saveToDocuments(Uri.parse(sourceUri), displayName, mimeType, folder ?: DEFAULT_FOLDER)
+    }
+
+    // Replaces the content of an entry we created, keeping its name and place in the folder.
+    AsyncFunction("overwriteAsync") { targetUri: String, sourceUri: String ->
+      overwrite(Uri.parse(targetUri), Uri.parse(sourceUri))
+    }
+
+    // Saves a JPEG into Pictures/<folder> so it shows up in the Gallery and photo pickers.
+    AsyncFunction("saveImageToGalleryAsync") { sourceUri: String, displayName: String, folder: String? ->
+      insertAndCopy(
+        MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+        Uri.parse(sourceUri),
+        displayName,
+        "image/jpeg",
+        "Pictures/${folder ?: DEFAULT_FOLDER}",
+      )
     }
 
     // Returns false when the entry is already gone or no longer ours (e.g. after a reinstall).
@@ -68,13 +87,46 @@ class MediaStoreModule : Module() {
     }
   }
 
-  private fun saveToDocuments(source: Uri, displayName: String, mimeType: String, folder: String): SavedFile {
+  private fun saveToDocuments(source: Uri, displayName: String, mimeType: String, folder: String): SavedFile =
+    insertAndCopy(
+      MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+      source,
+      displayName,
+      mimeType,
+      "Documents/$folder",
+    )
+
+  private fun overwrite(target: Uri, source: Uri): SavedFile {
     val resolver = context.contentResolver
-    val collection = MediaStore.Files.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+    try {
+      val input = resolver.openInputStream(source) ?: throw ReadFailedException(source.toString())
+      val output = resolver.openOutputStream(target, "wt") ?: throw SaveFailedException("cannot open output stream")
+      input.use { i -> output.use { o -> i.copyTo(o) } }
+    } catch (e: SecurityException) {
+      throw NotOwnedException(target.toString())
+    }
+    return describe(target, "")
+  }
+
+  private fun describe(uri: Uri, fallbackName: String): SavedFile = SavedFile().apply {
+    this.uri = uri.toString()
+    name = fallbackName
+    context.contentResolver
+      .query(uri, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.SIZE), null, null, null)
+      ?.use { cursor ->
+        if (cursor.moveToFirst()) {
+          name = cursor.getString(0) ?: fallbackName
+          size = cursor.getLong(1)
+        }
+      }
+  }
+
+  private fun insertAndCopy(collection: Uri, source: Uri, displayName: String, mimeType: String, relativePath: String): SavedFile {
+    val resolver = context.contentResolver
     val values = ContentValues().apply {
       put(MediaStore.MediaColumns.DISPLAY_NAME, displayName)
       put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-      put(MediaStore.MediaColumns.RELATIVE_PATH, "Documents/$folder")
+      put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
       put(MediaStore.MediaColumns.IS_PENDING, 1)
     }
     val target = resolver.insert(collection, values) ?: throw SaveFailedException("MediaStore insert returned null")
@@ -92,16 +144,6 @@ class MediaStoreModule : Module() {
     }
 
     // MediaStore may rename on collision ("scan (1).pdf"), so read back the final name and size.
-    return SavedFile().apply {
-      uri = target.toString()
-      name = displayName
-      resolver.query(target, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME, MediaStore.MediaColumns.SIZE), null, null, null)
-        ?.use { cursor ->
-          if (cursor.moveToFirst()) {
-            name = cursor.getString(0) ?: displayName
-            size = cursor.getLong(1)
-          }
-        }
-    }
+    return describe(target, displayName)
   }
 }
