@@ -7,11 +7,12 @@ import PdfThumbnail from 'react-native-pdf-thumbnail';
 import MediaStore from '@modules/media-store';
 import { deleteDocumentRow, insertDocument, updateDocument } from '@/db/documents';
 import type { Doc } from '@/db/schema';
-import { safeFileName, titleFromFileName } from '@/lib/documents';
+import { defaultScanTitle, safeFileName, titleFromFileName } from '@/lib/documents';
 import type { DraftPage } from '@/lib/draftPages';
 import { newId } from '@/lib/id';
 import { createPdfBuilder } from '@/pdf/build';
 import { countPages, extractPages, mergePdfs, rebuildPdf, type EditPage } from '@/pdf/edit';
+import { buildIdCardPdf } from '@/pdf/idCard';
 import { clearDraftFiles } from '@/scan/scanner';
 import type { PageSize } from '@/store/settings';
 
@@ -217,29 +218,59 @@ export async function saveEditedDocument(
   }
   const bytes = await rebuildPdf(source, editPages, { title: doc.title, pageSize });
   onProgress?.(pages.length, pages.length);
+  const id = await replaceDocumentFile(doc, bytes, editPages.length, 'edited');
+  clearDraftFiles();
+  return id;
+}
 
-  const temp = writeTempPdf(`${doc.id}-edit`, bytes);
+/**
+ * Replaces a document's PDF in place (same name and folder) and refreshes its pages and thumbnail.
+ * If the app no longer owns the file (an earlier install made it), the result is saved as a new
+ * document named "<title> (<fallbackLabel>)" and the original is left alone. Returns the result's id.
+ */
+export async function replaceDocumentFile(doc: Doc, bytes: Uint8Array, pageCount: number, fallbackLabel: string): Promise<string> {
+  if (!doc.localUri) throw new Error('This document is only on Google Drive. Download it first.');
+  const temp = writeTempPdf(`${doc.id}-replace`, bytes);
   try {
     let saved;
     try {
-      saved = await MediaStore.overwriteAsync(doc.localUri!, temp.uri);
+      saved = await MediaStore.overwriteAsync(doc.localUri, temp.uri);
     } catch (e) {
       if ((e as { code?: string }).code !== 'ERR_MEDIA_STORE_NOT_OWNED') throw e;
-      // The original belongs to an earlier install; keep it and save the edit as a new copy.
       const id = newId();
-      await saveNewPdf(id, bytes, { title: `${doc.title} (edited)`, pageCount: editPages.length });
-      clearDraftFiles();
+      await saveNewPdf(id, bytes, { title: `${doc.title} (${fallbackLabel})`, pageCount });
       return id;
     }
 
     clearPageCache(doc.id);
     const thumbPath = await makePdfThumb(doc.id, temp.uri).catch(() => doc.thumbPath);
-    await updateDocument(doc.id, { pageCount: editPages.length, sizeBytes: saved.size, thumbPath });
+    await updateDocument(doc.id, { pageCount, sizeBytes: saved.size, thumbPath });
+    return doc.id;
   } finally {
     temp.delete();
   }
+}
+
+/** Saves PDF bytes derived from `doc` (e.g. a compressed version) as a new document. Returns its id. */
+export async function saveDerivedCopy(doc: Doc, bytes: Uint8Array, pageCount: number, label: string): Promise<string> {
+  const id = newId();
+  await saveNewPdf(id, bytes, { title: `${doc.title} (${label})`, pageCount });
+  return id;
+}
+
+/** Front and back of an ID card on one A4 page at real size, as a new document. Returns its id. */
+export async function saveIdCard(pages: readonly DraftPage[]): Promise<string> {
+  const jpegs: Uint8Array[] = [];
+  for (const page of pages.slice(0, 2)) {
+    const normalized = new File((await normalizeImage(page)).uri);
+    jpegs.push(await normalized.bytes());
+    normalized.delete();
+  }
+  const title = defaultScanTitle(new Date(), 'ID card');
+  const id = newId();
+  await saveNewPdf(id, await buildIdCardPdf(jpegs, title), { title, pageCount: 1 });
   clearDraftFiles();
-  return doc.id;
+  return id;
 }
 
 /** Joins whole documents, in the given order, into a new document. Returns its id. */

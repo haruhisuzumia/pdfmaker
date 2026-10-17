@@ -50,6 +50,9 @@ export default function RootLayout() {
                 options={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: '#000' } }}
               />
               <Stack.Screen name="doc/[id]/extract" options={{ title: 'Extract pages' }} />
+              <Stack.Screen name="doc/[id]/compress" options={{ title: 'Compress' }} />
+              <Stack.Screen name="doc/[id]/text" options={{ title: 'Extract text' }} />
+              <Stack.Screen name="tools/photo" options={{ title: 'Passport / exam photo' }} />
               <Stack.Screen name="scan/review" options={{ title: 'Review scan' }} />
               <Stack.Screen name="tools/merge" options={{ title: 'Merge PDFs' }} />
               <Stack.Screen name="tools/choose" options={{ title: 'Choose a document' }} />

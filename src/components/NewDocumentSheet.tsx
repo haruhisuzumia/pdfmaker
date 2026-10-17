@@ -9,8 +9,6 @@ type Props = {
   onSelect: (action: NewDocumentAction) => void;
 };
 
-// ID card mode arrives with the photo tools (milestone 4).
-const COMING_SOON = 'Coming in the next update';
 
 export function NewDocumentSheet({ visible, onDismiss, onSelect }: Props) {
   const theme = useTheme();
@@ -32,8 +30,8 @@ export function NewDocumentSheet({ visible, onDismiss, onSelect }: Props) {
         />
         <List.Item
           title="Scan ID card"
-          description={COMING_SOON}
-          disabled
+          description="Front and back on one A4 page"
+          onPress={() => onSelect('id-card')}
           left={(p) => <List.Icon {...p} icon="card-account-details-outline" />}
         />
         <List.Item

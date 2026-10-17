@@ -15,11 +15,7 @@ import { deleteFromPhone, exportPagesAsImages, renameDocument, shareDocument } f
 import { ensurePages, type PageImage } from '@/storage/pageStore';
 
 // Tools that act on a document and arrive in a later milestone.
-const COMING_SOON = [
-  { label: 'Compress', icon: 'arrow-collapse-vertical' },
-  { label: 'Sign', icon: 'draw' },
-  { label: 'Extract text', icon: 'text-recognition' },
-];
+const COMING_SOON = [{ label: 'Sign', icon: 'draw' }];
 
 export default function DocumentScreen() {
   const theme = useTheme();
@@ -127,6 +123,20 @@ export default function DocumentScreen() {
               </Chip>
               <Chip icon="image-multiple-outline" disabled={!isOnPhone(doc) || exporting} onPress={saveAsImages} compact>
                 Save as images
+              </Chip>
+              <Chip
+                icon="arrow-collapse-vertical"
+                disabled={!isOnPhone(doc)}
+                onPress={() => router.push({ pathname: '/doc/[id]/compress', params: { id: doc.id } })}
+                compact>
+                Compress
+              </Chip>
+              <Chip
+                icon="text-recognition"
+                disabled={!pages}
+                onPress={() => router.push({ pathname: '/doc/[id]/text', params: { id: doc.id } })}
+                compact>
+                Extract text
               </Chip>
               {COMING_SOON.map((tool) => (
                 <Chip key={tool.label} icon={tool.icon} disabled compact>

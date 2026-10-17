@@ -1,0 +1,24 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.textrecognition'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.textrecognition"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // Unbundled models: downloaded by Google Play services, so the APK stays small.
+  implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.1'
+  implementation 'com.google.android.gms:play-services-mlkit-text-recognition-devanagari:16.0.1'
+}

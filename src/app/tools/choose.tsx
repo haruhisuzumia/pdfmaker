@@ -10,10 +10,12 @@ import type { Doc } from '@/db/schema';
 import { isOnPhone } from '@/lib/documents';
 import { exportPagesAsImages } from '@/storage/localStore';
 
-type Action = 'split' | 'images';
+type Action = 'split' | 'images' | 'compress' | 'text';
 
 const COPY: Record<Action, { title: string; hint: string }> = {
   split: { title: 'Split PDF', hint: 'Choose a document, then pick the pages to copy into a new PDF.' },
+  compress: { title: 'Compress to size', hint: 'Choose a document to make smaller, for example under 100 KB.' },
+  text: { title: 'Extract text', hint: 'Choose a document to read its text (English or Hindi).' },
   images: { title: 'PDF to images', hint: 'Choose a document. Each page is saved as a JPG in Pictures/PDF Maker.' },
 };
 
@@ -28,8 +30,9 @@ export default function ChooseDocumentScreen() {
   const [message, setMessage] = useState<string | null>(null);
 
   async function choose(doc: Doc) {
-    if (action === 'split') {
-      router.replace({ pathname: '/doc/[id]/extract', params: { id: doc.id } });
+    if (action === 'split' || action === 'compress' || action === 'text') {
+      const pathname = ({ split: '/doc/[id]/extract', compress: '/doc/[id]/compress', text: '/doc/[id]/text' } as const)[action];
+      router.replace({ pathname, params: { id: doc.id } });
       return;
     }
     if (progress != null) return;

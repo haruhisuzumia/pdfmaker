@@ -3,8 +3,7 @@ import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { List, Snackbar } from 'react-native-paper';
 
-import { pickImages } from '@/scan/scanner';
-import { useDraft } from '@/store/draft';
+import { scanIdCard, startNewDocument } from '@/scan/flows';
 
 type Tool = {
   title: string;
@@ -15,13 +14,6 @@ type Tool = {
   run?: () => Promise<void>;
 };
 
-async function imagesToPdf() {
-  const pages = await pickImages();
-  if (!pages) return;
-  useDraft.getState().startNew(pages);
-  router.push('/scan/review');
-}
-
 const TOOLS: Tool[] = [
   { title: 'Merge PDFs', description: 'Combine several documents into one', icon: 'file-multiple-outline', href: '/tools/merge' },
   {
@@ -30,16 +22,37 @@ const TOOLS: Tool[] = [
     icon: 'call-split',
     href: { pathname: '/tools/choose', params: { action: 'split' } },
   },
-  { title: 'Images to PDF', description: 'Turn photos into a single PDF', icon: 'image-multiple-outline', run: imagesToPdf },
+  { title: 'Images to PDF', description: 'Turn photos into a single PDF', icon: 'image-multiple-outline', run: () => startNewDocument('photos') },
   {
     title: 'PDF to images',
     description: 'Save each page as a JPG in your Gallery',
     icon: 'file-image-outline',
     href: { pathname: '/tools/choose', params: { action: 'images' } },
   },
-  { title: 'Compress to size', description: 'Fit portal limits like 100 KB or 200 KB', icon: 'arrow-collapse-vertical' },
-  { title: 'Scan ID card', description: 'Front and back on one page', icon: 'card-account-details-outline' },
-  { title: 'Passport / exam photo', description: 'Standard sizes at a target KB', icon: 'account-box-outline' },
+  {
+    title: 'Compress to size',
+    description: 'Fit portal limits like 100 KB or 200 KB',
+    icon: 'arrow-collapse-vertical',
+    href: { pathname: '/tools/choose', params: { action: 'compress' } },
+  },
+  {
+    title: 'Scan ID card',
+    description: 'Aadhaar, PAN or licence: front and back on one page',
+    icon: 'card-account-details-outline',
+    run: scanIdCard,
+  },
+  {
+    title: 'Passport / exam photo',
+    description: 'Exact size and under the KB limit',
+    icon: 'account-box-outline',
+    href: '/tools/photo',
+  },
+  {
+    title: 'Extract text',
+    description: 'Copy the text from a scan (English, Hindi)',
+    icon: 'text-recognition',
+    href: { pathname: '/tools/choose', params: { action: 'text' } },
+  },
 ];
 
 export default function ToolsScreen() {

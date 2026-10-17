@@ -8,8 +8,7 @@ import { DocRow } from '@/components/DocRow';
 import { NewDocumentSheet, type NewDocumentAction } from '@/components/NewDocumentSheet';
 import { allDocumentsQuery } from '@/db/documents';
 import { filterDocs, sortDocs, type LocationFilter, type SortKey } from '@/lib/documents';
-import { pickImages, scanPages } from '@/scan/scanner';
-import { useDraft } from '@/store/draft';
+import { scanIdCard, startNewDocument } from '@/scan/flows';
 import { importPdfs } from '@/storage/localStore';
 
 const FILTERS: { key: LocationFilter; label: string; icon: string }[] = [
@@ -43,11 +42,9 @@ export default function DocumentsScreen() {
     setBusy(true);
     try {
       if (action === 'scan' || action === 'photos') {
-        const pages = action === 'scan' ? await scanPages() : await pickImages();
-        if (pages) {
-          useDraft.getState().startNew(pages);
-          router.push('/scan/review');
-        }
+        await startNewDocument(action);
+      } else if (action === 'id-card') {
+        await scanIdCard();
       } else if (action === 'pdf') {
         const count = await importPdfs();
         if (count > 0) setMessage(count === 1 ? 'PDF imported' : `${count} PDFs imported`);
