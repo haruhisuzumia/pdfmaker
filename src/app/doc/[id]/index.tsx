@@ -79,7 +79,7 @@ export default function DocumentScreen() {
     setMessage('Saving pages to your Gallery…');
     try {
       const count = await exportPagesAsImages(doc);
-      setMessage(`${count} ${count === 1 ? 'image' : 'images'} saved to Pictures/PDF Maker`);
+      setMessage(`${count} ${count === 1 ? 'image' : 'images'} saved to Pictures/Panna`);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Could not save the images');
     } finally {

@@ -112,7 +112,7 @@ export default function ReviewScreen() {
         {editDoc.title}
       </Text>
       <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-        Long-press a page or use the handle to change the order. Changes replace the file in Documents/PDF Maker.
+        Long-press a page or use the handle to change the order. Changes replace the file in Documents/Panna.
       </Text>
     </View>
   ) : (
@@ -133,7 +133,7 @@ export default function ReviewScreen() {
       <View style={styles.saveTo}>
         <MaterialCommunityIcons name="cellphone" size={18} color={theme.colors.onSurfaceVariant} />
         <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-          Saves to Documents/PDF Maker on this phone
+          Saves to Documents/Panna on this phone
         </Text>
       </View>
       <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>

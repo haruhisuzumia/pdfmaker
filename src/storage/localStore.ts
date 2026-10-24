@@ -33,7 +33,7 @@ async function countPdfPages(uri: string): Promise<number> {
 
 /**
  * Lets the user pick PDFs (from the phone or the Google Drive provider in the system picker),
- * copies each into Documents/PDF Maker and adds it to the list. Returns how many were imported.
+ * copies each into Documents/Panna and adds it to the list. Returns how many were imported.
  */
 export async function importPdfs(): Promise<number> {
   const picked = await DocumentPicker.getDocumentAsync({
@@ -79,7 +79,7 @@ function writeTempPdf(name: string, bytes: Uint8Array): File {
   return file;
 }
 
-/** Saves a finished PDF to Documents/PDF Maker, makes its thumbnail and adds it to the list. */
+/** Saves a finished PDF to Documents/Panna, makes its thumbnail and adds it to the list. */
 async function saveNewPdf(
   id: string,
   bytes: Uint8Array,
@@ -125,7 +125,7 @@ export async function readPdfBytes(doc: Doc): Promise<Uint8Array> {
 }
 
 /**
- * Turns the reviewed scan into a PDF in Documents/PDF Maker, keeps the page images for
+ * Turns the reviewed scan into a PDF in Documents/Panna, keeps the page images for
  * viewing, and adds it to the list. Returns the new document id.
  */
 export async function saveScannedDocument(
@@ -205,7 +205,7 @@ export async function deleteFromPhone(doc: Doc): Promise<boolean> {
 
 /**
  * Applies Edit pages to a saved document. Existing pages are copied from the PDF (keeping text
- * and quality); new pages are embedded images. The file in Documents/PDF Maker is replaced in place.
+ * and quality); new pages are embedded images. The file in Documents/Panna is replaced in place.
  * Returns the id of the document that holds the result (a new one if the original can't be changed).
  */
 export async function saveEditedDocument(
@@ -307,7 +307,7 @@ export async function extractToNewDocument(doc: Doc, indices: readonly number[],
   return id;
 }
 
-/** Saves every page as a JPG in Pictures/PDF Maker (visible in the Gallery). Returns how many. */
+/** Saves every page as a JPG in Pictures/Panna (visible in the Gallery). Returns how many. */
 export async function exportPagesAsImages(doc: Doc, onProgress?: (done: number, total: number) => void): Promise<number> {
   if (!doc.localUri) throw new Error('This document is only on Google Drive. Download it first.');
   const total = doc.pageCount || (await countPages(await readPdfBytes(doc)));

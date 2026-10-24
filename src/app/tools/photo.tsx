@@ -99,7 +99,7 @@ export default function PhotoToolScreen() {
     if (!result) return;
     try {
       await MediaStore.saveImageToGalleryAsync(result.uri, fileName());
-      setMessage('Saved to Pictures/PDF Maker');
+      setMessage('Saved to Pictures/Panna');
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Could not save');
     }

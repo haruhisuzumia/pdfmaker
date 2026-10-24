@@ -176,7 +176,7 @@ export async function queueUpload(doc: Pick<Doc, 'id'>) {
   void runUploadQueue().catch(() => {});
 }
 
-/** Downloads a Drive-only document to Documents/PDF Maker so it can be opened offline. */
+/** Downloads a Drive-only document to Documents/Panna so it can be opened offline. */
 export async function downloadDocument(doc: Doc) {
   if (!doc.driveFileId) throw new Error('This document is not on Google Drive.');
   const temp = new File(Paths.cache, `${doc.id}-download.pdf`);

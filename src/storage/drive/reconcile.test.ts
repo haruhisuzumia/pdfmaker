@@ -52,14 +52,14 @@ describe('planReconcile', () => {
 
   it('links a document to its Drive file by the app id stored on Drive', () => {
     const local = [doc({ id: 'a', syncState: 'uploading' })];
-    expect(planReconcile(local, [file({ id: 'f9', appProperties: { pdfmakerId: 'a' } })])).toEqual([
+    expect(planReconcile(local, [file({ id: 'f9', appProperties: { pannaId: 'a' } })])).toEqual([
       { type: 'link', docId: 'a', fileId: 'f9' },
     ]);
   });
 
   it('replaces a stale Drive id instead of reporting the file as gone', () => {
     const local = [doc({ id: 'a', syncState: 'synced', driveFileId: 'old' })];
-    expect(planReconcile(local, [file({ id: 'new', appProperties: { pdfmakerId: 'a' } })])).toEqual([
+    expect(planReconcile(local, [file({ id: 'new', appProperties: { pannaId: 'a' } })])).toEqual([
       { type: 'link', docId: 'a', fileId: 'new' },
     ]);
   });

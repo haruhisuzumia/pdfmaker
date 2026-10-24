@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "PDF Maker",
-    "slug": "pdfmaker",
-    "version": "0.1.0",
+    "name": "Panna",
+    "slug": "panna",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "pdfmaker",
+    "scheme": "panna",
     "userInterfaceStyle": "automatic",
     "platforms": [
       "android"
     ],
     "android": {
-      "package": "com.pdfmaker.scanner",
+      "package": "io.github.haruhisuzumia.panna",
       "adaptiveIcon": {
-        "backgroundColor": "#E0F2F1",
+        "backgroundColor": "#0D2B26",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -27,17 +27,19 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO",
-        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
-      ]
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
+      "versionCode": 1
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#00695C",
+          "backgroundColor": "#0D2B26",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "imageWidth": 140
         }
       ],
       "expo-sqlite",
@@ -49,7 +51,8 @@
             "minSdkVersion": 29
           }
         }
-      ]
+      ],
+      "./plugins/withReleaseSigning"
     ],
     "experiments": {
       "typedRoutes": true,

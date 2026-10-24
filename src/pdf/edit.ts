@@ -22,8 +22,8 @@ async function loadForEditing(bytes: Uint8Array): Promise<PDFDocument> {
 async function newPdf(title: string) {
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
-  pdf.setProducer('PDF Maker');
-  pdf.setCreator('PDF Maker');
+  pdf.setProducer('Panna');
+  pdf.setCreator('Panna');
   const now = new Date();
   pdf.setCreationDate(now);
   pdf.setModificationDate(now);

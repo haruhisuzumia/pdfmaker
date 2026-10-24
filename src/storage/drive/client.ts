@@ -5,7 +5,7 @@ import GoogleAuth from '@modules/google-auth';
 const API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
-export const DRIVE_FOLDER_NAME = 'PDF Maker';
+export const DRIVE_FOLDER_NAME = 'Panna';
 const FILE_FIELDS = 'id,name,size,modifiedTime,trashed,appProperties';
 
 export type DriveFile = {
@@ -14,7 +14,7 @@ export type DriveFile = {
   size?: string;
   modifiedTime?: string;
   trashed?: boolean;
-  appProperties?: { pdfmakerId?: string };
+  appProperties?: { pannaId?: string };
 };
 
 export class DriveError extends Error {
@@ -87,7 +87,7 @@ export async function revokeAccess() {
   await fetch(`https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(token)}`, { method: 'POST' }).catch(() => {});
 }
 
-/** The app's "PDF Maker" folder in My Drive (created if missing). */
+/** The app's "Panna" folder in My Drive (created if missing). */
 export async function ensureFolder(knownId: string | null): Promise<string> {
   if (knownId) {
     try {
@@ -154,7 +154,7 @@ export function uploadNewFile(
     name,
     parents: [folderId],
     mimeType: 'application/pdf',
-    appProperties: { pdfmakerId: docId },
+    appProperties: { pannaId: docId },
   });
 }
 

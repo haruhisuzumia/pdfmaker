@@ -65,7 +65,7 @@ export default function SettingsScreen() {
               {phoneOnly.length > 0 && (
                 <List.Item
                   title={`Back up ${phoneOnly.length} phone-only ${phoneOnly.length === 1 ? 'document' : 'documents'}`}
-                  description="Copies them to the PDF Maker folder in your Drive"
+                  description="Copies them to the Panna folder in your Drive"
                   disabled={busy}
                   left={(p) => <List.Icon {...p} icon="cloud-upload-outline" />}
                   onPress={() =>
@@ -104,7 +104,7 @@ export default function SettingsScreen() {
           <List.Subheader>Saving</List.Subheader>
           <List.Item
             title="Phone folder"
-            description="Documents/PDF Maker"
+            description="Documents/Panna"
             left={(p) => <List.Icon {...p} icon="folder-outline" />}
           />
           <View style={styles.field}>
@@ -140,7 +140,7 @@ export default function SettingsScreen() {
         <List.Section>
           <List.Subheader>About</List.Subheader>
           <List.Item
-            title="PDF Maker"
+            title="Panna"
             description={`Version ${Constants.expoConfig?.version ?? ''} · Free, no ads, no watermark`}
             left={(p) => <List.Icon {...p} icon="information-outline" />}
           />

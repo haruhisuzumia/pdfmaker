@@ -17,7 +17,7 @@ const COPY: Record<Action, { title: string; hint: string }> = {
   compress: { title: 'Compress to size', hint: 'Choose a document to make smaller, for example under 100 KB.' },
   text: { title: 'Extract text', hint: 'Choose a document to read its text (English or Hindi).' },
   sign: { title: 'Sign a PDF', hint: 'Choose a document to sign.' },
-  images: { title: 'PDF to images', hint: 'Choose a document. Each page is saved as a JPG in Pictures/PDF Maker.' },
+  images: { title: 'PDF to images', hint: 'Choose a document. Each page is saved as a JPG in Pictures/Panna.' },
 };
 
 /** Picks one document for a tool that works on a single PDF. */
@@ -47,7 +47,7 @@ export default function ChooseDocumentScreen() {
     setProgress(0);
     try {
       const count = await exportPagesAsImages(doc, (done, total) => setProgress(total ? done / total : 0));
-      setMessage(`${count} ${count === 1 ? 'image' : 'images'} saved to Pictures/PDF Maker`);
+      setMessage(`${count} ${count === 1 ? 'image' : 'images'} saved to Pictures/Panna`);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Could not save the images');
     } finally {

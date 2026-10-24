@@ -18,7 +18,7 @@ describe('createPdfBuilder', () => {
     const pdf = await PDFDocument.load(await builder.save(), { updateMetadata: false });
     expect(pdf.getPageCount()).toBe(2);
     expect(pdf.getTitle()).toBe('Rent agreement');
-    expect(pdf.getProducer()).toBe('PDF Maker');
+    expect(pdf.getProducer()).toBe('Panna');
     const { width, height } = pdf.getPage(0).getSize();
     expect([width, height]).toEqual([595, 842]);
   });

@@ -1,7 +1,7 @@
-# PDF Maker
+# Panna
 
 A free, private document scanner and PDF toolkit for Android. No ads, no watermark, no account required.
-Documents are saved to the phone's `Documents/PDF Maker` folder, and optionally to the user's own Google Drive.
+Documents are saved to the phone's `Documents/Panna` folder, and optionally to the user's own Google Drive.
 
 See [docs/PLAN.md](docs/PLAN.md) for the screens, tech stack and milestones.
 
@@ -48,6 +48,23 @@ src/storage/     saving scans, import, share, rename, delete, page images; Googl
 src/scan/        ML Kit scanner wrapper and draft files
 src/pdf/         page layout and PDF building (unit tested)
 src/store/       persisted settings
-modules/media-store/  Kotlin module: save/delete files in Documents/PDF Maker
+modules/media-store/  Kotlin module: save/delete files in Documents/Panna
 drizzle/         generated SQL migrations
 ```
+
+## Release build
+
+Release builds are signed with an **upload key** kept outside the repo, in `../panna-signing/`
+(`panna-upload.jks` + `keystore.properties`). Back up that folder; Google Play App Signing holds the real app key,
+so a lost upload key can be reset through the Play Console.
+
+```bash
+npx expo prebuild -p android --clean
+cd android && ./gradlew bundleRelease   # → app/build/outputs/bundle/release/app-release.aab
+```
+
+Without the signing folder, release builds fall back to the debug key (fine for local testing, not for Play).
+Before each upload, bump `expo.android.versionCode` (and `version` for user-visible changes) in `app.json`.
+
+Store listing text, Data safety answers and the 512 px icon are in [docs/store](docs/store).
+The privacy policy is [docs/privacy-policy.html](docs/privacy-policy.html), served by GitHub Pages.

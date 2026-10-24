@@ -26,7 +26,7 @@ export function planReconcile(local: readonly LocalDoc[], drive: readonly DriveF
 
   for (const file of drive) {
     seenFileIds.add(file.id);
-    const doc = byFileId.get(file.id) ?? (file.appProperties?.pdfmakerId ? byId.get(file.appProperties.pdfmakerId) : undefined);
+    const doc = byFileId.get(file.id) ?? (file.appProperties?.pannaId ? byId.get(file.appProperties.pannaId) : undefined);
 
     if (!doc) {
       actions.push({
@@ -48,7 +48,7 @@ export function planReconcile(local: readonly LocalDoc[], drive: readonly DriveF
 
   for (const doc of local) {
     if (!doc.driveFileId || seenFileIds.has(doc.driveFileId)) continue;
-    // A link found above by pdfmakerId replaces the stale id; no need to treat it as gone.
+    // A link found above by pannaId replaces the stale id; no need to treat it as gone.
     if (actions.some((a) => a.type === 'link' && a.docId === doc.id)) continue;
 
     if (doc.syncState === 'drive_only') actions.push({ type: 'driveGone', docId: doc.id, next: 'remove' });

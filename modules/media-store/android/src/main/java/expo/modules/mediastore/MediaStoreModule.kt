@@ -14,7 +14,7 @@ import expo.modules.kotlin.records.Record
 import java.io.File
 
 /** Files we write land in the shared Documents/<folder> directory and survive an uninstall. */
-private const val DEFAULT_FOLDER = "PDF Maker"
+private const val DEFAULT_FOLDER = "Panna"
 
 class SavedFile : Record {
   @Field var uri: String = ""

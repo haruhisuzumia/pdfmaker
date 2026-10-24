@@ -34,8 +34,8 @@ export async function buildIdCardPdf(jpegs: readonly Uint8Array[], title: string
   if (jpegs.length === 0) throw new Error('Scan the front of the card first.');
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
-  pdf.setProducer('PDF Maker');
-  pdf.setCreator('PDF Maker');
+  pdf.setProducer('Panna');
+  pdf.setCreator('Panna');
 
   const page = pdf.addPage([PAPER.a4.w, PAPER.a4.h]);
   const images = await Promise.all(jpegs.slice(0, 2).map((bytes) => pdf.embedJpg(bytes)));

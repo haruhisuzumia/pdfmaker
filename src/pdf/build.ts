@@ -8,8 +8,8 @@ import { layoutPage } from './layout';
 export async function createPdfBuilder(title: string, pageSize: PageSize) {
   const pdf = await PDFDocument.create();
   pdf.setTitle(title);
-  pdf.setProducer('PDF Maker');
-  pdf.setCreator('PDF Maker');
+  pdf.setProducer('Panna');
+  pdf.setCreator('Panna');
   const now = new Date();
   pdf.setCreationDate(now);
   pdf.setModificationDate(now);

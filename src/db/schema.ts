@@ -22,7 +22,7 @@ export const documents = sqliteTable('documents', {
   sizeBytes: int().notNull(),
   createdAt: int().notNull(),
   updatedAt: int().notNull(),
-  /** content:// URI in Documents/PDF Maker, null when the file is only on Drive. */
+  /** content:// URI in Documents/Panna, null when the file is only on Drive. */
   localUri: text(),
   driveFileId: text(),
   syncState: text({ enum: SYNC_STATES }).notNull(),
