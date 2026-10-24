@@ -8,6 +8,7 @@ import { PaperProvider, Text } from 'react-native-paper';
 
 import migrations from '../../drizzle/migrations';
 import { db } from '@/db/client';
+import { useDriveSync } from '@/storage/drive/useDriveSync';
 import { useSettings } from '@/store/settings';
 import { darkTheme, lightTheme, navigationTheme } from '@/theme';
 
@@ -18,6 +19,7 @@ export default function RootLayout() {
   const onboarded = useSettings((s) => s.onboarded);
   const themePreference = useSettings((s) => s.theme);
   const systemScheme = useColorScheme();
+  useDriveSync();
 
   const dark = themePreference === 'system' ? systemScheme === 'dark' : themePreference === 'dark';
   const theme = dark ? darkTheme : lightTheme;
@@ -52,6 +54,7 @@ export default function RootLayout() {
               <Stack.Screen name="doc/[id]/extract" options={{ title: 'Extract pages' }} />
               <Stack.Screen name="doc/[id]/compress" options={{ title: 'Compress' }} />
               <Stack.Screen name="doc/[id]/text" options={{ title: 'Extract text' }} />
+              <Stack.Screen name="doc/[id]/sign" options={{ title: 'Sign' }} />
               <Stack.Screen name="tools/photo" options={{ title: 'Passport / exam photo' }} />
               <Stack.Screen name="scan/review" options={{ title: 'Review scan' }} />
               <Stack.Screen name="tools/merge" options={{ title: 'Merge PDFs' }} />

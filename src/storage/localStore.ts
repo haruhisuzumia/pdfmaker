@@ -16,15 +16,8 @@ import { buildIdCardPdf } from '@/pdf/idCard';
 import { clearDraftFiles } from '@/scan/scanner';
 import type { PageSize } from '@/store/settings';
 
-import {
-  clearPageCache,
-  deletePageFiles,
-  finishPages,
-  makePdfThumb,
-  makeThumb,
-  normalizeImage,
-  writePage,
-} from './pageStore';
+import { initialSyncState, queueUpload, removeFromDrive, renameOnDrive, runUploadQueue, trashDriveCopy } from './drive/sync';
+import { clearPageCache, deletePageFiles, finishPages, makePdfThumb, makeThumb, normalizeImage, writePage } from './pageStore';
 
 const MIME = { pdf: 'application/pdf', jpg: 'image/jpeg' } as const;
 
@@ -69,11 +62,12 @@ export async function importPdfs(): Promise<number> {
       updatedAt: now,
       localUri: saved.uri,
       driveFileId: null,
-      syncState: 'local_only',
+      syncState: initialSyncState(),
       thumbPath,
     });
     new File(asset.uri).delete();
   }
+  void runUploadQueue().catch(() => {});
   return picked.assets.length;
 }
 
@@ -95,9 +89,9 @@ async function saveNewPdf(
   try {
     const saved = await MediaStore.saveToDocumentsAsync(temp.uri, safeFileName(title, 'pdf'), MIME.pdf);
     const thumbSource = thumb ?? { kind: 'pdf', uri: temp.uri };
-    const thumbPath = await (thumbSource.kind === 'image' ? makeThumb(id, thumbSource.uri) : makePdfThumb(id, thumbSource.uri)).catch(
-      () => null,
-    );
+    const thumbPath = await (
+      thumbSource.kind === 'image' ? makeThumb(id, thumbSource.uri) : makePdfThumb(id, thumbSource.uri)
+    ).catch(() => null);
     const now = Date.now();
     await insertDocument({
       id,
@@ -109,16 +103,17 @@ async function saveNewPdf(
       updatedAt: now,
       localUri: saved.uri,
       driveFileId: null,
-      syncState: 'local_only',
+      syncState: initialSyncState(),
       thumbPath,
     });
   } finally {
     temp.delete();
   }
+  void runUploadQueue().catch(() => {});
 }
 
 /** The document's PDF bytes (copied out of shared storage). */
-async function readPdfBytes(doc: Doc): Promise<Uint8Array> {
+export async function readPdfBytes(doc: Doc): Promise<Uint8Array> {
   if (!doc.localUri) throw new Error('This document is only on Google Drive. Download it first.');
   if (doc.kind !== 'pdf') throw new Error('This tool works on PDF documents.');
   const cached = new File(await MediaStore.copyToCacheAsync(doc.localUri, `${doc.id}-${Date.now()}.pdf`));
@@ -177,12 +172,26 @@ export async function renameDocument(doc: Doc, title: string) {
   const trimmed = title.trim();
   if (!trimmed || trimmed === doc.title) return;
   await updateDocument(doc.id, { title: trimmed });
+  void renameOnDrive(doc, trimmed);
 }
 
 /**
  * Removes the phone copy. Returns false if the file could not be deleted from the folder
  * (e.g. it was created before a reinstall); the list entry is removed either way.
  */
+export type DeleteFrom = 'phone' | 'drive' | 'both';
+
+/** Deletes a document from the phone, from Drive (to Drive's Bin), or both. */
+export async function deleteDocument(doc: Doc, from: DeleteFrom) {
+  if (from === 'drive') return removeFromDrive(doc);
+  if (from === 'both') {
+    await trashDriveCopy(doc);
+    await deleteFromPhone({ ...doc, syncState: 'local_only', driveFileId: null });
+    return;
+  }
+  await deleteFromPhone(doc);
+}
+
 export async function deleteFromPhone(doc: Doc): Promise<boolean> {
   const removed = doc.localUri ? await MediaStore.deleteAsync(doc.localUri) : true;
   if (doc.syncState === 'synced') {
@@ -228,7 +237,12 @@ export async function saveEditedDocument(
  * If the app no longer owns the file (an earlier install made it), the result is saved as a new
  * document named "<title> (<fallbackLabel>)" and the original is left alone. Returns the result's id.
  */
-export async function replaceDocumentFile(doc: Doc, bytes: Uint8Array, pageCount: number, fallbackLabel: string): Promise<string> {
+export async function replaceDocumentFile(
+  doc: Doc,
+  bytes: Uint8Array,
+  pageCount: number,
+  fallbackLabel: string,
+): Promise<string> {
   if (!doc.localUri) throw new Error('This document is only on Google Drive. Download it first.');
   const temp = writeTempPdf(`${doc.id}-replace`, bytes);
   try {
@@ -245,6 +259,8 @@ export async function replaceDocumentFile(doc: Doc, bytes: Uint8Array, pageCount
     clearPageCache(doc.id);
     const thumbPath = await makePdfThumb(doc.id, temp.uri).catch(() => doc.thumbPath);
     await updateDocument(doc.id, { pageCount, sizeBytes: saved.size, thumbPath });
+    // Send the new version to Drive too, replacing the old Drive copy.
+    if (doc.driveFileId) await queueUpload(doc);
     return doc.id;
   } finally {
     temp.delete();

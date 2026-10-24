@@ -2,7 +2,10 @@ import Storage from 'expo-sqlite/kv-store';
 import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 
-export type SaveLocation = 'phone' | 'drive' | 'both';
+import { migrateSettings, SETTINGS_VERSION } from './settingsMigration';
+
+/** "both" keeps the phone copy and also uploads to Google Drive. */
+export type SaveLocation = 'phone' | 'both';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type PageSize = 'a4' | 'letter' | 'fit';
 
@@ -13,6 +16,9 @@ type SettingsState = {
   pageSize: PageSize;
   theme: ThemePreference;
   appLock: boolean;
+  /** The connected Google account, or null when Drive isn't connected. */
+  driveEmail: string | null;
+  driveFolderId: string | null;
   set: (patch: Partial<Omit<SettingsState, 'set'>>) => void;
 };
 
@@ -34,11 +40,14 @@ export const useSettings = create<SettingsState>()(
       pageSize: 'a4',
       theme: 'system',
       appLock: false,
+      driveEmail: null,
+      driveFolderId: null,
       set: (patch) => set(patch),
     }),
     {
       name: 'settings',
-      version: 1,
+      version: SETTINGS_VERSION,
+      migrate: (persisted, version) => migrateSettings(persisted, version) as unknown as SettingsState,
       storage: createJSONStorage(() => syncStorage),
       partialize: ({ set: _set, ...rest }) => rest,
     },

@@ -6,6 +6,7 @@ import { Button, Text, useTheme } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useSettings } from '@/store/settings';
+import { connectDrive } from '@/storage/drive/sync';
 
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -33,6 +34,17 @@ export default function OnboardingScreen() {
   const [index, setIndex] = useState(0);
   const slide = SLIDES[index];
   const last = index === SLIDES.length - 1;
+  const [connecting, setConnecting] = useState(false);
+
+  async function connectAndFinish() {
+    setConnecting(true);
+    try {
+      await connectDrive();
+    } catch {
+      // Drive can be connected later in Settings.
+    }
+    finish();
+  }
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.colors.background }]}>
@@ -61,9 +73,19 @@ export default function OnboardingScreen() {
         ))}
       </View>
 
-      <Button mode="contained" style={styles.cta} contentStyle={styles.ctaContent} onPress={last ? finish : () => setIndex(index + 1)}>
+      <Button
+        mode="contained"
+        style={styles.cta}
+        contentStyle={styles.ctaContent}
+        disabled={connecting}
+        onPress={last ? finish : () => setIndex(index + 1)}>
         {last ? 'Get started' : 'Next'}
       </Button>
+      {last && (
+        <Button icon="google-drive" style={styles.secondary} onPress={connectAndFinish} loading={connecting} disabled={connecting}>
+          Also back up to Google Drive
+        </Button>
+      )}
     </SafeAreaView>
   );
 }
@@ -78,4 +100,5 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
   cta: { borderRadius: 28 },
   ctaContent: { height: 52 },
+  secondary: { marginTop: 8 },
 });

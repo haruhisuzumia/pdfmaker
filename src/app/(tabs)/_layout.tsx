@@ -4,11 +4,14 @@ import type { ComponentProps } from 'react';
 import type { ColorValue } from 'react-native';
 import { useTheme } from 'react-native-paper';
 
+import { MaterialTabBar } from '@/components/MaterialTabBar';
+
 type IconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-function tabIcon(name: IconName) {
-  function TabIcon({ color, size }: { color: ColorValue; size: number }) {
-    return <MaterialCommunityIcons name={name} color={color as string} size={size} />;
+/** Outline icon normally, filled when the tab is selected (Material 3). */
+function tabIcon(outline: IconName, filled: IconName) {
+  function TabIcon({ focused, color, size }: { focused: boolean; color: ColorValue; size: number }) {
+    return <MaterialCommunityIcons name={focused ? filled : outline} color={color as string} size={size} />;
   }
   return TabIcon;
 }
@@ -17,16 +20,19 @@ export default function TabsLayout() {
   const theme = useTheme();
   return (
     <Tabs
+      tabBar={(props) => <MaterialTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
-        tabBarStyle: { backgroundColor: theme.colors.elevation.level2, borderTopWidth: 0 },
+        // Slide-and-fade between tabs instead of an instant swap.
+        animation: 'shift',
         headerStyle: { backgroundColor: theme.colors.background },
         headerShadowVisible: false,
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Documents', tabBarIcon: tabIcon('file-document-multiple-outline') }} />
-      <Tabs.Screen name="tools" options={{ title: 'Tools', tabBarIcon: tabIcon('toolbox-outline') }} />
-      <Tabs.Screen name="settings" options={{ title: 'Settings', tabBarIcon: tabIcon('cog-outline') }} />
+      <Tabs.Screen
+        name="index"
+        options={{ title: 'Documents', tabBarIcon: tabIcon('file-document-multiple-outline', 'file-document-multiple') }}
+      />
+      <Tabs.Screen name="tools" options={{ title: 'Tools', tabBarIcon: tabIcon('toolbox-outline', 'toolbox') }} />
+      <Tabs.Screen name="settings" options={{ title: 'Settings', tabBarIcon: tabIcon('cog-outline', 'cog') }} />
     </Tabs>
   );
 }

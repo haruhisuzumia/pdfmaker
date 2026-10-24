@@ -30,6 +30,12 @@ const TOOLS: Tool[] = [
     href: { pathname: '/tools/choose', params: { action: 'images' } },
   },
   {
+    title: 'Sign a PDF',
+    description: 'Draw your signature and place it on a page',
+    icon: 'draw',
+    href: { pathname: '/tools/choose', params: { action: 'sign' } },
+  },
+  {
     title: 'Compress to size',
     description: 'Fit portal limits like 100 KB or 200 KB',
     icon: 'arrow-collapse-vertical',

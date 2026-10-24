@@ -9,6 +9,8 @@ import { NewDocumentSheet, type NewDocumentAction } from '@/components/NewDocume
 import { allDocumentsQuery } from '@/db/documents';
 import { filterDocs, sortDocs, type LocationFilter, type SortKey } from '@/lib/documents';
 import { scanIdCard, startNewDocument } from '@/scan/flows';
+import { useSettings } from '@/store/settings';
+import { syncNow } from '@/storage/drive/sync';
 import { importPdfs } from '@/storage/localStore';
 
 const FILTERS: { key: LocationFilter; label: string; icon: string }[] = [
@@ -34,6 +36,14 @@ export default function DocumentsScreen() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const driveConnected = useSettings((s) => s.driveEmail != null);
+
+  async function refresh() {
+    setRefreshing(true);
+    await syncNow();
+    setRefreshing(false);
+  }
 
   const visible = useMemo(() => sortDocs(filterDocs(docs, location, search), sort), [docs, location, search, sort]);
 
@@ -65,7 +75,12 @@ export default function DocumentsScreen() {
           <Searchbar placeholder="Search documents" value={search} onChangeText={setSearch} mode="bar" style={styles.search} />
           <View style={styles.chips}>
             {FILTERS.map((f) => (
-              <Chip key={f.key} icon={f.icon} selected={location === f.key} showSelectedOverlay onPress={() => setLocation(f.key)}>
+              <Chip
+                key={f.key}
+                icon={f.icon}
+                selected={location === f.key}
+                showSelectedOverlay
+                onPress={() => setLocation(f.key)}>
                 {f.label}
               </Chip>
             ))}
@@ -104,8 +119,12 @@ export default function DocumentsScreen() {
         <FlatList
           data={visible}
           keyExtractor={(d) => d.id}
-          renderItem={({ item }) => <DocRow doc={item} onPress={(d) => router.push({ pathname: '/doc/[id]', params: { id: d.id } })} />}
+          renderItem={({ item }) => (
+            <DocRow doc={item} onPress={(d) => router.push({ pathname: '/doc/[id]', params: { id: d.id } })} />
+          )}
           contentContainerStyle={styles.listContent}
+          refreshing={refreshing}
+          onRefresh={driveConnected ? refresh : undefined}
           ListEmptyComponent={
             <Text style={[styles.noMatch, { color: theme.colors.onSurfaceVariant }]}>No documents match your search.</Text>
           }

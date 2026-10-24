@@ -11,11 +11,10 @@ import { documentByIdQuery } from '@/db/documents';
 import { badgeFor, isOnPhone } from '@/lib/documents';
 import type { DraftPage } from '@/lib/draftPages';
 import { useDraft } from '@/store/draft';
-import { deleteFromPhone, exportPagesAsImages, renameDocument, shareDocument } from '@/storage/localStore';
+import { useSettings } from '@/store/settings';
+import { downloadDocument, queueUpload, removeFromDrive } from '@/storage/drive/sync';
+import { deleteDocument, exportPagesAsImages, renameDocument, shareDocument, type DeleteFrom } from '@/storage/localStore';
 import { ensurePages, type PageImage } from '@/storage/pageStore';
-
-// Tools that act on a document and arrive in a later milestone.
-const COMING_SOON = [{ label: 'Sign', icon: 'draw' }];
 
 export default function DocumentScreen() {
   const theme = useTheme();
@@ -31,6 +30,8 @@ export default function DocumentScreen() {
   const [pagesError, setPagesError] = useState<string | null>(null);
 
   const [exporting, setExporting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const driveConnected = useSettings((s) => s.driveEmail != null);
 
   const docId = doc?.id;
   const localUri = doc?.localUri;
@@ -51,9 +52,10 @@ export default function DocumentScreen() {
 
   if (!doc) return null;
 
-  async function run(action: () => Promise<unknown>) {
+  async function run(action: () => Promise<unknown>, done?: string) {
     try {
       await action();
+      if (done) setMessage(done);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Something went wrong');
     }
@@ -85,12 +87,31 @@ export default function DocumentScreen() {
     }
   }
 
-  async function handleDelete() {
-    setConfirmDelete(false);
-    // The row disappears from the live query, so leave the screen before it unmounts.
-    router.back();
-    await run(() => deleteFromPhone(doc));
+  async function download() {
+    if (!doc) return;
+    setDownloading(true);
+    setPagesError(null);
+    await run(() => downloadDocument(doc));
+    setDownloading(false);
   }
+
+  async function handleDelete(from: DeleteFrom) {
+    setConfirmDelete(false);
+    const rowGoes = from === 'both' || (from === 'phone' && !doc!.driveFileId) || (from === 'drive' && !doc!.localUri);
+    // When the row disappears from the live query, leave the screen before it unmounts.
+    if (rowGoes) router.back();
+    await run(() => deleteDocument(doc!, from));
+    if (!rowGoes) setMessage(from === 'drive' ? 'Moved to Drive’s Bin' : 'Deleted from this phone');
+  }
+
+  const onPhone = isOnPhone(doc);
+  const onDrive = doc.driveFileId != null && (doc.syncState === 'synced' || doc.syncState === 'drive_only');
+  const driveStatus =
+    doc.syncState === 'pending_upload' || doc.syncState === 'uploading'
+      ? 'Uploading to Google Drive…'
+      : doc.syncState === 'error'
+        ? 'Upload to Google Drive failed.'
+        : null;
 
   return (
     <>
@@ -107,8 +128,34 @@ export default function DocumentScreen() {
               </Text>
               <LocationBadge badge={badgeFor(doc.syncState)} />
             </View>
+            {driveStatus && (
+              <View style={styles.driveStatus}>
+                <Text
+                  variant="bodySmall"
+                  style={{ color: doc.syncState === 'error' ? theme.colors.error : theme.colors.onSurfaceVariant }}>
+                  {driveStatus}
+                </Text>
+                {doc.syncState === 'error' && (
+                  <Button compact onPress={() => run(() => queueUpload(doc))}>
+                    Retry
+                  </Button>
+                )}
+              </View>
+            )}
+            {!onPhone && (
+              <View style={[styles.cloudCard, { backgroundColor: theme.colors.secondaryContainer }]}>
+                <Text variant="bodyMedium">This document is on Google Drive. Download it to view and edit it on this phone.</Text>
+                <Button mode="contained" icon="download" onPress={download} loading={downloading} disabled={downloading}>
+                  Download
+                </Button>
+              </View>
+            )}
             <View style={styles.actions}>
-              <Button mode="contained" icon="share-variant" disabled={!isOnPhone(doc)} onPress={() => run(() => shareDocument(doc))}>
+              <Button
+                mode="contained"
+                icon="share-variant"
+                disabled={!isOnPhone(doc)}
+                onPress={() => run(() => shareDocument(doc))}>
                 Share
               </Button>
               <Chip icon="file-document-edit-outline" disabled={!pages} onPress={editPages} compact>
@@ -138,14 +185,16 @@ export default function DocumentScreen() {
                 compact>
                 Extract text
               </Chip>
-              {COMING_SOON.map((tool) => (
-                <Chip key={tool.label} icon={tool.icon} disabled compact>
-                  {tool.label}
-                </Chip>
-              ))}
+              <Chip
+                icon="draw"
+                disabled={!pages || !isOnPhone(doc)}
+                onPress={() => router.push({ pathname: '/doc/[id]/sign', params: { id: doc.id } })}
+                compact>
+                Sign
+              </Chip>
             </View>
-            {!pages && !pagesError && <ActivityIndicator style={styles.loading} />}
-            {pagesError && (
+            {onPhone && !pages && !pagesError && <ActivityIndicator style={styles.loading} />}
+            {onPhone && pagesError && (
               <Text variant="bodyMedium" style={[styles.pagesError, { color: theme.colors.onSurfaceVariant }]}>
                 {pagesError}
               </Text>
@@ -171,6 +220,21 @@ export default function DocumentScreen() {
                 setRenaming(true);
               }}
             />
+            {driveConnected && onPhone && doc.syncState === 'local_only' && (
+              <List.Item
+                title="Save to Google Drive"
+                left={(p) => <List.Icon {...p} icon="cloud-upload-outline" />}
+                onPress={() => run(() => queueUpload(doc))}
+              />
+            )}
+            {driveConnected && onPhone && onDrive && (
+              <List.Item
+                title="Remove from Google Drive"
+                description="Keeps the copy on this phone"
+                left={(p) => <List.Icon {...p} icon="cloud-off-outline" />}
+                onPress={() => run(() => removeFromDrive(doc), 'Removed from Google Drive')}
+              />
+            )}
             <List.Item
               title="Delete"
               titleStyle={{ color: theme.colors.error }}
@@ -202,14 +266,31 @@ export default function DocumentScreen() {
         <Dialog visible={confirmDelete} onDismiss={() => setConfirmDelete(false)}>
           <Dialog.Title>Delete document?</Dialog.Title>
           <Dialog.Content>
-            <Text variant="bodyMedium">“{doc.title}” will be deleted from your phone.</Text>
+            <Text variant="bodyMedium">
+              {onPhone && onDrive
+                ? `“${doc.title}” is on this phone and on Google Drive. Where should it be deleted?`
+                : onDrive
+                  ? `“${doc.title}” will be moved to the Bin in your Google Drive.`
+                  : `“${doc.title}” will be deleted from your phone.`}
+            </Text>
           </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setConfirmDelete(false)}>Cancel</Button>
-            <Button textColor={theme.colors.error} onPress={handleDelete}>
-              Delete
-            </Button>
-          </Dialog.Actions>
+          {onPhone && onDrive ? (
+            <Dialog.Actions style={styles.deleteChoices}>
+              <Button onPress={() => handleDelete('phone')}>Phone only</Button>
+              <Button onPress={() => handleDelete('drive')}>Drive only</Button>
+              <Button textColor={theme.colors.error} onPress={() => handleDelete('both')}>
+                Both
+              </Button>
+              <Button onPress={() => setConfirmDelete(false)}>Cancel</Button>
+            </Dialog.Actions>
+          ) : (
+            <Dialog.Actions>
+              <Button onPress={() => setConfirmDelete(false)}>Cancel</Button>
+              <Button textColor={theme.colors.error} onPress={() => handleDelete(onPhone ? 'phone' : 'drive')}>
+                Delete
+              </Button>
+            </Dialog.Actions>
+          )}
         </Dialog>
       </Portal>
 
@@ -228,4 +309,7 @@ const styles = StyleSheet.create({
   loading: { marginTop: 32 },
   pagesError: { textAlign: 'center', marginTop: 24 },
   page: { width: '100%', borderRadius: 8, overflow: 'hidden' },
+  driveStatus: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  cloudCard: { borderRadius: 16, padding: 16, gap: 12 },
+  deleteChoices: { flexWrap: 'wrap' },
 });
